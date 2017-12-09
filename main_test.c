@@ -1,5 +1,5 @@
 //
-//  main.c
+//  main_test.c
 //  Bouncing_squares
 //
 //  Created by Sven Goffin on 8/12/17.
@@ -15,35 +15,34 @@ int main(int argc, const char * argv[]) {
 	
 	key_t key_sem;
 	key_t key_q;
+	key_t key_shm;
 	int semid;
 	int qid;
+	int shmid;
 	union semun semopts;
 	
 	key_sem = ftok(".", 'S');
 	key_q = ftok(".", 'Q');
+	key_shm = ftok(".", 'M');
 	
-	if((semid = semget(key_sem, 3, IPC_CREAT|0666)) == -1){
-		fprintf(stderr,"Semaphore set already exists!");
-	}
-	
-	
-	semopts.val = 5;
-	semctl(semid, 0, SETVAL, semopts);
-	semopts.val = 5;
-	semctl(semid, 1, SETVAL, semopts);
-	semopts.val = 5;
-	semctl(semid, 2, SETVAL, semopts);
-	
-	lock_sem(semid, 0);
-	printf("try 0: OK\n");
-	
-	unlock_sem(semid, 0);
+	semid = open_sem(key_sem, 3);
 	rm_sem(semid);
 	
-	if((qid = msgget(key_q, IPC_CREAT|0660)) == -1){
-		perror("msgget");
-		exit(1);
-	}
+	qid = open_msgq(key_q);
+	qid = open_msgq(key_q);
+	
+	struct syncmsgbuf send_qbuf;
+	long type = 7;
+	char* text = "01";
+	
+	snd_msg(qid, &send_qbuf, type, text);
+	
+	struct syncmsgbuf rcv_qbuf;
+	rcv_msg(qid, &rcv_qbuf, type);
+	rm_queue(qid);
+	
+	shmid = open_shm(key_shm, sizeof(int));
+	shmid = open_shm(key_shm, sizeof(int));
 	
 	return 0;
 	
