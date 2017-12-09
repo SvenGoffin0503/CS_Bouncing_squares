@@ -12,12 +12,12 @@
 #include <sys/sem.h>
 #include <sys/msg.h>
 
-#define MAX_SEND_SIZE 2 //To be modify
+#define MAX_SEND_SIZE 10 //To be modify
 
 union semun{
 	int val;                /* value for SETVAL */
 	struct semid_ds *buf;   /* buffer for IPC_STAT & IPC_SET */
-	ushort *array;          /* array for GETALL & SETALL */
+	unsigned short *array;          /* array for GETALL & SETALL */
 	struct seminfo *__buf;  /* buffer for IPC_INFO */
 };
 
@@ -26,14 +26,22 @@ struct syncmsgbuf{
 	char mtext[MAX_SEND_SIZE];
 };
 
-/* Semaphore implementation */
+/* Semaphore section */
+int open_sem(key_t keyval, int numsems);
 void lock_sem(int sid, int member);
 void unlock_sem(int sid, int member);
 void rm_sem(int semid);
 
-/* Message queue implementation */
+/* Message queue section */
+int open_msgq(key_t keyval);
 void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, char* text);
 void rcv_msg(int qid, struct syncmsgbuf* qbuf, long type);
 void rm_queue(int qid);
+
+/* Shared memory section */
+int open_shm(key_t keyval, int segsize);
+void wr_shm(int* segptr, int index, int value);
+int rd_shm(int* segptr, int index);
+void rm_shm(int shmid);
 
 #endif /* synchronization_h */
