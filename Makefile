@@ -1,14 +1,23 @@
-main: synchronization.o main.o
-        gcc --std=c99 --pedantic -Wall -Wmissing-prototypes -Wcpp -g -o main synchronization.o main.o
- 
-synchronization.o: synchronization.c synchronization.h
-        gcc --std=c99 --pedantic -Wall -Wmissing-prototypes -Wcpp -g -o synchronization.o -c synchronization.c
- 
-main.o: main.c synchronization.h
-        gcc --std=c99 --pedantic -Wall -Wmissing-prototypes -Wcpp -g -o main.o -c main.c
- 
+# Makefile
+
+CFLAGS = `sdl-config --cflags --libs` --std=c99 --pedantic -Wall -Wmissing-prototypes -g
+
+OBJS = synchronization.o output.o main.o #Objects to build
+TARGET = main       #Target executable name
+
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $(OBJS) `sdl-config --cflags --libs`
+
+
 clean:
-        rm -f *.o
- 
-mrproper: clean
-        rm -f main
+	rm -f $(OBJS) *.d core* *.c~ *.h~ *~ $(TARGET)
+
+
+# Automatic maintenance of dependencies:
+
+OBJMAKETRANSCMD = sed "s/$*.o:/$*.o $*.d:/g"
+
+%.d: %.c
+	$(SHELL) -ec '$(CC) -c -MM $(CFLAGS) $< | $(OBJMAKETRANSCMD) > $@'
+
+include $(addsuffix .d,$(basename $(OBJS)))
