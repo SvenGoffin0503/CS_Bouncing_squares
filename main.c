@@ -7,33 +7,16 @@
 //
 
 #include <stdio.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
 #include <sys/types.h>
 
+#include "parallel.h"
 #include "synchronization.h"
 #include "output.h"
 #include "constants.h"
-
-#define SIZE 5
-//Global variables
-int table_of_pixels[SIZE_X][SIZE_Y];    //Will store the states of the pixels
-int temporary_table[SIZE_X][SIZE_Y];    //Will be used to store state n+1
-
-typedef struct square{
-	int color;
-	int speedx;
-	int speedy;
-} square;
-
-typedef struct position{
-	int x;
-	int y;
-} position;
-
-
 
 //Does two squares have an intersection?
 static int hasIntersection(position a, position b)
@@ -48,98 +31,177 @@ static int hasIntersection(position a, position b)
 }
 
 
-
-
-static void initSquares(int nb_squares, square* table_square, int* segptr){
+static void initSquares(int nb_squares, int nb_custom, square* table_square,
+						   position* table_pos, int* segptr){
 	
-	position table_pos[nb_squares];
+	const int X_MAX = SIZE_X - SQUARE_WIDTH;
+	const int Y_MAX = SIZE_Y - SQUARE_WIDTH;
 	
-	for(int i = 0; i < nb_squares; i++){
-		table_pos[i].x = (rand() % (SIZE_X - SQUARE_WIDTH + 1));
-		table_pos[i].y = (rand() % (SIZE_Y - SQUARE_WIDTH + 1));
-		for(int j = 0; j < i; j++){
-			if(hasIntersection(table_pos[i], table_pos[j])){
+	// Custom initialization of squares
+	if(nb_custom > 0)
+		printf("CUSTOM ZONE:\n");
+	
+	for(int i = 0; i < nb_custom; i++){
+		
+		printf("\t Custom square %d:\n", i + 1);
+		
+		// Coordinates initialization
+		int valid_coord = 0;
+		while(valid_coord == 0){
+			printf("\n\t\t Enter x coordinate of square %d (between 0 and %d) :",
+				   i + 1, X_MAX);
+			scanf("%d", &(table_pos[i].x));
+		
+			printf("\t\t Enter y coordinate of square %d (between 0 and %d) :",
+				   i + 1, Y_MAX);
+			scanf("%d", &(table_pos[i].y));
+		
+			if(table_pos[i].x < 0 || table_pos[i].x > X_MAX ||
+			   table_pos[i].y < 0 || table_pos[i].x > Y_MAX){
+				printf("\n\t\t Invalid coordinates. They must be between 0 and"
+					" %d for x and %d for y. Try again.\n",  X_MAX, Y_MAX);
+				continue;
+			}
+		
+			int intersection = 0;
+			for(int j = 0; j < i; j++){
+				if(hasIntersection(table_pos[i], table_pos[j])){
+					printf("\n\t\t Intersection occurs, you have to enter new "
+						   "positions for square %d.\n", i + 1);
+					intersection = 1;
+					break;
+				}
+			}
+		
+			if(intersection == 1)
+				continue;
+			
+			valid_coord = 1;
+		}
+		
+		// Color initialization
+		int valid_color = 0;
+		while(valid_color == 0){
+			printf("\n\t\t (1 = white, 2 = red, 3 = green, 4 = blue)\n");
+			printf("\t\t Enter the color of square %d : ", i + 1);
+			scanf("%d", &table_square[i].color);
+			
+			if(table_square[i].color < 1 || table_square[i].color > 4){
+				printf("\n\t\t Invalid color. Only the values 1, 2, 3 and "
+						"4 are allowed. Please, try again.\n");
+			}
+			else{
+				valid_color = 1;
+			}
+		}
+		
+		// Speed initialization
+		int valid_speed = 0;
+		while(valid_speed == 0){
+			printf("\n\t\t Enter the x velocity of the square %d "
+				   "(Must be -1, 0 or 1) : ", i + 1);
+			scanf("%d", &table_square[i].speedx);
+			
+			printf("\t\t Enter the y velocity of the square %d "
+				   "(Must be -1, 0 or 1) : ", i + 1);
+			scanf("%d", &table_square[i].speedy);
+			
+			if(table_square[i].speedx  > 1 || table_square[i].speedx  < -1 ||
+			   table_square[i].speedy  > 1 || table_square[i].speedy  < -1 ){
+				printf("\n\t\t Invalid velocity. It must be -1, 0 or 1. "
+					   "Please, try again.\n");
+			}
+			else{
+				valid_speed = 1;
+			}
+		}
+	}
+	
+	// Random initialisation of squares
+	int nb_rand = nb_squares - nb_custom;
+	for(int i = 0; i < nb_rand; i++){
+		table_pos[nb_custom + i].x = (rand() % (X_MAX + 1));
+		table_pos[nb_custom + i].y = (rand() % (Y_MAX + 1));
+		for(int j = 0; j < nb_custom + i; j++){
+			if(hasIntersection(table_pos[nb_custom + i], table_pos[j])){
 				i--;
 				break;
 			}
 		}
 	}
 	
+	for(int i = 0; i < nb_rand; i++){
+		table_square[nb_custom + i].color = (rand() % 4) + 1;
+		table_square[nb_custom + i].speedx = (rand() % 3) - 1;
+		table_square[nb_custom + i].speedy = (rand() % 3) - 1;
+		wr_shm(segptr, 2 + 2 * i, table_pos[i].x);
+		wr_shm(segptr, 3 + 2 * i, table_pos[i].y);
+	}
+	
+	// Writes positions in shared memory
 	for(int i = 0; i < nb_squares; i++){
-		table_square[i].color = (rand() % 5);
-		table_square[i].speedx = (rand() % 3) - 1;
-		table_square[i].speedy = (rand() % 3) - 1;
 		wr_shm(segptr, 2 + 2 * i, table_pos[i].x);
 		wr_shm(segptr, 3 + 2 * i, table_pos[i].y);
 	}
 }
 
-
-
-
 int main(int argc, char* argv[]){
 	
 	int nb_squares;
-	int nb_custom_squares;
+	int nb_cust_squares;
+	char custom_type;
+	char type_nb_squares;
+	const int squares_max = 10;
 	
 	// Initializes the number of squares
-	switch(argc){
-		case 1:
-			// Default initialization
+	printf("Do you want to choose the number of squares (write c) or do you"
+		   " want a random number of squares (write r) ? \n");
+	scanf("%s", &type_nb_squares);
+	
+	switch(type_nb_squares){
+		case 'r':
 			nb_squares = (rand() % 10) + 1;
 			break;
-		case 2:
-			// Custom initialization
-			nb_squares = atoi(argv[1]);
+		case 'c':
+			printf("How many squares do you want? (Max %d) \n",  squares_max);
+			scanf("%d", &nb_squares);
+			
+			if(nb_squares > squares_max){
+				
+				fprintf(stderr, "Too many squares! This must be smaller (or"
+						"equal) than %d. \n", squares_max);
+				exit(1);
+			}
+			
 			break;
 		default:
-			fprintf(stderr, "Invalid number of parameters : %d. Only the number"
-					"of squares is expected", argc - 1);
+			fprintf(stderr, "Invalid character. Only the characters c or r "
+					"are expected.\n");
 			exit(1);
 	}
 	
-	if(nb_squares > SQUARE_MAX){
+	if(nb_squares > squares_max){
 		
 		fprintf(stderr, "Too many squares! This must be smaller (or equal) "
-				"than 10");
+				"than %d.\n", squares_max);
 		exit(1);
 	}
 	
-	/*--------------------------------------------------------------------------
-	 // Initializes the number of custom squares
-	 while(1 == 1){
-	 printf("How many squares do you want to custom? "
-	 "(only %d available)\n", nb_squares);
-	 scanf("%d", &nb_custom_squares);
-	 if(nb_custom_squares >= 0 && nb_custom_squares <= nb_squares)
-	 break;
-	 printf("Invalid number. Please enter a number between "
-	 "0 and %d.\n", nb_squares);
-	 }
-	 
-	 if(nb_custom_squares > 0){
-	 printf("CUSTOM ZONE:\n");
-	 for(int i = 0; i < nb_custom_squares; i++){
-	 printf("\t Custom square %d:\n", i);
-	 printf("\t\tEnter x and y positions of square %d:\n", i);
-	 scanf("%d %d", &pos_table[i].x, &pos_table[i].y);
-	 for(int j = 0; j < i; j++){
-	 if(pos_table[i].x == pos_table[j].x){
-	 printf("A FAIRE");
-	 }
-	 }
-	 }
-	 }
-	 -------------------------------------------------------------------------*/
+	printf("Do you want to initialize your squares manually (write m) "
+		   "or randomly (write r) ? \n");
+	scanf("%s", &custom_type);
 	
 	
+	position pos_table[nb_squares];
 	square square_table[nb_squares];
-	union semun semopts;
+	
+	union semunion semopts;
 	pid_t pid;
 	key_t key_shm = ftok(".", 'M');
 	key_t key_sem = ftok(".", 'S');
 	key_t key_msg = ftok(".", 'Q');
-	int semnum = 3 + nb_squares;
+
+	int semnum = 5 + nb_squares;
 	int shmid = open_shm(key_shm, ((2 * nb_squares) + 2) * sizeof(int));
 	int semid = open_sem(key_sem, semnum);
 	int qid = open_msgq(key_msg);
@@ -149,29 +211,66 @@ int main(int argc, char* argv[]){
 	// Attach the shared memory segment into the current process
 	if((segptr = (int*)shmat(shmid, 0, 0)) == (int*)-1){
 		perror("shmat");
+		rm_queue(qid);
+		rm_shm(shmid);
+		rm_sem(semid);
 		exit(1);
 	}
-
 	
-	// Semaphores' initialization
-	for(int i = 0; i < nb_squares; i++){
-		semopts.val = 0;
-		semctl(semid, i, SETVAL, semopts);
+	switch(custom_type){
+		case 'r':
+			nb_cust_squares = 0;
+			break;
+		case 'm':
+			printf("How many squares do you want to customize ? (Max %d) \n",
+				   nb_squares);
+			scanf("%d", &nb_cust_squares);
+			
+			if(nb_cust_squares > nb_squares){
+				fprintf(stderr, "Too many squares to customize! This must be"
+						"smaller (or equal) than %d \n", nb_squares);
+				rm_queue(qid);
+				rm_shm(shmid);
+				rm_sem(semid);
+				exit(1);
+			}
+			break;
+		default:
+			fprintf(stderr, "Invalid character. Only the characters m or r "
+					"are expected");
+			rm_queue(qid);
+			rm_shm(shmid);
+			rm_sem(semid);
+			exit(1);
 	}
 	
+	initSquares(nb_squares, nb_cust_squares, square_table, pos_table, segptr);
+	
+	// Semaphores' initialization
 	semopts.val = 0;
-	semctl(semid, nb_squares, SETVAL, semopts);
+	semctl(semid, 0, SETVAL, semopts); // Go_compute_position
 	semopts.val = 1;
-	semctl(semid, nb_squares + 1, SETVAL, semopts);
-	semopts.val = 1;
-	semctl(semid, nb_squares + 2, SETVAL, semopts);
+	semctl(semid, 1, SETVAL, semopts); // Mutex
+	semopts.val = nb_squares;
+	semctl(semid, 2, SETVAL, semopts); // Can_display
+	semopts.val = 0;
+	semctl(semid, 3, SETVAL, semopts); // Go_exit
+	semopts.val = 0;
+	semctl(semid, 4, SETVAL, semopts); // KBHIT
+	
+	for(int i = 0; i < nb_squares; i++){
+		semopts.val = 0;
+		semctl(semid, 5 + i, SETVAL, semopts); // Go_intersection
+	}
+	
 	
 	// Initialization of shared variables
-	wr_shm(segptr, 0, 0);
-	wr_shm(segptr, 1, 0);
+	wr_shm(segptr, 0, 0); // Stop
+	wr_shm(segptr, 1, 0); // nb_finish_intersect
 	
-	// Randomly initializes the squares
-	initSquares(nb_squares, square_table, segptr);
+	// Clear input buffer
+	int c;
+	while ((c = getchar()) != '\n' && c != EOF) { }
 	
 	// Creation of the different processes
 	id = 0;
@@ -180,16 +279,20 @@ int main(int argc, char* argv[]){
 		pid = fork();
 		if(pid < 0){
 			perror("Processes creation failed.");
+			rm_queue(qid);
+			rm_shm(shmid);
+			rm_sem(semid);
 			exit(1);
 		}
 		if(pid == 0){
 			if(cnt == nb_squares){
-				// Controller area
-				
+				// User control area
+				exit_proc(segptr, semid, qid, shmid, nb_squares);
 			}
 			else{
 				// Square area
 				cnt = nb_squares;
+				squares(segptr, semid, id);
 			}
 		}
 		else{
@@ -198,8 +301,8 @@ int main(int argc, char* argv[]){
 	}
 	
 	if(pid != 0){
-		// Graphic handler area
-		
+		// Master area
+		master(segptr, semid, nb_squares, square_table);
 	}
 	
 	return 0;
