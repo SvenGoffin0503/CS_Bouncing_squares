@@ -2,7 +2,7 @@
 
 CFLAGS = `sdl-config --cflags --libs` --std=c99 --pedantic -Wall -Wmissing-prototypes -g
 
-OBJS = synchronization.o output.o main.o #Objects to build
+OBJS = parallel.o synchronization.o output.o main.o #Objects to build
 TARGET = main       #Target executable name
 
 $(TARGET): $(OBJS)
