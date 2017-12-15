@@ -21,7 +21,9 @@ typedef struct square{
 } square;
 
 int kbhit(void);
-void squares(int* segptr, int semid, int id);
+int hasIntersection(position a, position b);
+void squares(int* segptr, int semid, int qid, square square_data, int id,
+			 int nb_squares);
 void exit_proc(int* segptr, int semid, int qid, int shmid, int nb_squares);
 void master(int* segptr, int semid, int nb_squares, square* square_table);
 
