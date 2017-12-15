@@ -18,18 +18,6 @@
 #include "output.h"
 #include "constants.h"
 
-//Does two squares have an intersection?
-static int hasIntersection(position a, position b)
-{
-	int rc = 0;
-	
-	if(a.y < b.y + SQUARE_WIDTH && a.y + SQUARE_WIDTH > b.y &&
-	   a.x < b.x + SQUARE_WIDTH && a.x + SQUARE_WIDTH > b.x)
-		rc = 1;
-	
-	return rc;
-}
-
 
 static void initSquares(int nb_squares, int nb_custom, square* table_square,
 						   position* table_pos, int* segptr){
@@ -134,14 +122,12 @@ static void initSquares(int nb_squares, int nb_custom, square* table_square,
 		table_square[nb_custom + i].color = (rand() % 4) + 1;
 		table_square[nb_custom + i].speedx = (rand() % 3) - 1;
 		table_square[nb_custom + i].speedy = (rand() % 3) - 1;
-		wr_shm(segptr, 2 + 2 * i, table_pos[i].x);
-		wr_shm(segptr, 3 + 2 * i, table_pos[i].y);
 	}
 	
 	// Writes positions in shared memory
 	for(int i = 0; i < nb_squares; i++){
-		wr_shm(segptr, 2 + 2 * i, table_pos[i].x);
-		wr_shm(segptr, 3 + 2 * i, table_pos[i].y);
+		wr_shm(segptr, 3 + 2 * i, table_pos[i].x);
+		wr_shm(segptr, 4 + 2 * i, table_pos[i].y);
 	}
 }
 
@@ -201,8 +187,12 @@ int main(int argc, char* argv[]){
 	key_t key_sem = ftok(".", 'S');
 	key_t key_msg = ftok(".", 'Q');
 
-	int semnum = 5 + nb_squares;
-	int shmid = open_shm(key_shm, ((2 * nb_squares) + 2) * sizeof(int));
+rm_queue(1769472);
+rm_shm(1507329);
+rm_sem(2162688);
+	
+	int semnum = 7 + nb_squares;
+	int shmid = open_shm(key_shm, ((2 * nb_squares) + 3) * sizeof(int));
 	int semid = open_sem(key_sem, semnum);
 	int qid = open_msgq(key_msg);
 	int id, cnt;
@@ -249,24 +239,29 @@ int main(int argc, char* argv[]){
 	// Semaphores' initialization
 	semopts.val = 0;
 	semctl(semid, 0, SETVAL, semopts); // Go_compute_position
+	semopts.val = 0;
+	semctl(semid, 1, SETVAL, semopts);
 	semopts.val = 1;
-	semctl(semid, 1, SETVAL, semopts); // Mutex
+	semctl(semid, 2, SETVAL, semopts); // Mutex 1
+	semopts.val = 1;
+	semctl(semid, 3, SETVAL, semopts); // Mutex 2
 	semopts.val = nb_squares;
-	semctl(semid, 2, SETVAL, semopts); // Can_display
+	semctl(semid, 4, SETVAL, semopts); // Can_display
 	semopts.val = 0;
-	semctl(semid, 3, SETVAL, semopts); // Go_exit
+	semctl(semid, 5, SETVAL, semopts); // Go_exit
 	semopts.val = 0;
-	semctl(semid, 4, SETVAL, semopts); // KBHIT
+	semctl(semid, 6, SETVAL, semopts); // KBHIT
 	
 	for(int i = 0; i < nb_squares; i++){
 		semopts.val = 0;
-		semctl(semid, 5 + i, SETVAL, semopts); // Go_intersection
+		semctl(semid, 7 + i, SETVAL, semopts); // Go_intersection
 	}
 	
 	
 	// Initialization of shared variables
 	wr_shm(segptr, 0, 0); // Stop
-	wr_shm(segptr, 1, 0); // nb_finish_intersect
+	wr_shm(segptr, 1, 0); // nb_finish_compute
+	wr_shm(segptr, 2, 0); // nb_finish_intersect
 	
 	// Clear input buffer
 	int c;
@@ -292,7 +287,7 @@ int main(int argc, char* argv[]){
 			else{
 				// Square area
 				cnt = nb_squares;
-				squares(segptr, semid, id);
+				squares(segptr, semid, qid, square_table[id], id, nb_squares);
 			}
 		}
 		else{
