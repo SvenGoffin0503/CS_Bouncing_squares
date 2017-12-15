@@ -16,6 +16,7 @@
 #include <sys/shm.h>
 
 #include "synchronization.h"
+#include "parallel.h"
 
 
 
@@ -147,12 +148,14 @@ int open_msgq(key_t keyval){
  			-> type : type of the message to send
  			-> text : message text
  ---------------------------------------------------------------------------- */
-void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, char* text){
+void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, square* swap_sq){
 	
 	qbuf->mtype = type;
-	strcpy(qbuf->mtext, text);
+	qbuf->speed[0] = swap_sq->speedx;
+	qbuf->speed[1] = swap_sq->speedy;
 	
-	if(msgsnd(qid, (struct msgbuf*) qbuf, strlen(qbuf->mtext) + 1, 0) == -1){
+	int length = sizeof(struct syncmsgbuf) - sizeof(long);
+	if(msgsnd(qid, (struct msgbuf*) qbuf, length, 0) == -1){
 		perror("msgsnd ");
 		exit(1);
 	}
@@ -170,8 +173,8 @@ void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, char* text){
 void rcv_msg(int qid, struct syncmsgbuf* qbuf, long type){
 	
 	qbuf->mtype = type;
-	
-	if(msgrcv(qid, (struct msgbuf*) qbuf, MAX_SEND_SIZE, type, 0) == -1){
+	int length = sizeof(struct syncmsgbuf) - sizeof(long);
+	if(msgrcv(qid, qbuf, length, type, 0) == -1){
 		perror("msgrcv ");
 		exit(1);
 	}
