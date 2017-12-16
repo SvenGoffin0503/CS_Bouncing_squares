@@ -1,14 +1,9 @@
-//
-//  synchronization.c
-//  Bouncing_squares
-//
-//  Created by Sven Goffin on 8/12/17.
-//  Copyright © 2017 Sven Goffin. All rights reserved.
-//
+/* ==========================================================================
+ synchronization.c : implementation file
+ ============================================================================ */
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <errno.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
@@ -16,19 +11,18 @@
 #include <sys/shm.h>
 
 #include "synchronization.h"
-#include "parallel.h"
-
+#include "processes.h"
 
 
 /* --------------------------------------------------------------------------
  Creates a set of semaphores
  
  ARGUMENTS:
- 			-> keyval : key value (generally returned by a call to ftok())
- 			-> numsems : the number of semaphores in the set.
+ 	-> keyval : key value (generally returned by a call to ftok())
+	-> numsems : the number of semaphores in the set.
  
  RETURNS:
- 			-> semid : identifier of the created semaphore set
+	-> semid : identifier of the created semaphore set
  ---------------------------------------------------------------------------- */
 int open_sem(key_t keyval, int numsems){
 	
@@ -53,8 +47,8 @@ int open_sem(key_t keyval, int numsems){
  the semaphore set of identifier "semid".
  
  ARGUMENTS:
- 			-> semid : identifier of the semaphore set
- 			-> member : index of the target semaphore in the set
+	-> semid : identifier of the semaphore set
+	-> member : index of the target semaphore in the set
  ---------------------------------------------------------------------------- */
 void lock_sem(int semid, int member){
 	
@@ -81,8 +75,8 @@ void lock_sem(int semid, int member){
  the semaphore set of identifier "semid".
  
  ARGUMENTS:
- 			-> semid : identifier of the semaphore set
- 			-> member : index of the target semaphore in the set
+	-> semid : identifier of the semaphore set
+	-> member : index of the target semaphore in the set
  ---------------------------------------------------------------------------- */
 void unlock_sem(int semid, int member){
 	
@@ -108,7 +102,7 @@ void unlock_sem(int semid, int member){
  Marks the semaphore set of identifier "semid" for deletion.
  
  ARGUMENTS:
- 			-> semid : identifier of the semaphore set to remove
+	-> semid : identifier of the semaphore set to remove
  ---------------------------------------------------------------------------- */
 void rm_sem(int semid){
 	
@@ -120,10 +114,10 @@ void rm_sem(int semid){
  Creates (or opens if already exists) a message queue.
  
  ARGUMENTS:
- 			-> keyval : key value (generally returned by a call to ftok())
+	-> keyval : key value (generally returned by a call to ftok())
  
  RETURNS:
- 			-> qid : identifier of the created/opened message queue
+ 	-> qid : identifier of the created/opened message queue
  ---------------------------------------------------------------------------- */
 int open_msgq(key_t keyval){
 	
@@ -142,11 +136,11 @@ int open_msgq(key_t keyval){
  Delivers a message to the message queue of identifier "qid".
  
  ARGUMENTS:
- 			-> qid : identifier of the message queue
- 			-> qbuf : data structure containing all the information about the
-			          message
- 			-> type : type of the message to send
- 			-> text : message text
+	-> qid : identifier of the message queue
+	-> qbuf : data structure containing all the information about the message
+	-> type : type of the message to send
+	-> swap_sq : a pointer to a data structure containing the square
+ 				 information to send
  ---------------------------------------------------------------------------- */
 void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, square* swap_sq){
 	
@@ -166,9 +160,9 @@ void snd_msg(int qid, struct syncmsgbuf* qbuf, long type, square* swap_sq){
  Retrieves a message from the message queue of identifier "qid".
  
  ARGUMENTS:
- 			-> qid : identifier of the message queue
- 			-> qbuf : data structure used to store the retrieved message
- 			-> type : type of the message to retrieve
+	-> qid : identifier of the message queue
+	-> qbuf : data structure used to store the retrieved message
+	-> type : type of the message to retrieve
  ---------------------------------------------------------------------------- */
 void rcv_msg(int qid, struct syncmsgbuf* qbuf, long type){
 	
@@ -185,7 +179,7 @@ void rcv_msg(int qid, struct syncmsgbuf* qbuf, long type){
  Removes the message queue of identifier "qid" from the kernel.
  
  ARGUMENTS:
- 			-> qid : identifier of the message queue
+	-> qid : identifier of the message queue
  ---------------------------------------------------------------------------- */
 void rm_queue(int qid){
 	
@@ -197,11 +191,11 @@ void rm_queue(int qid){
  Creates (or opens if already exists) a shared memory segment.
  
  ARGUMENTS:
- 			-> keyval : key value (generally returned by a call to ftok())
- 			-> segsize : the size of the shared memory segment in bytes
+	-> keyval : key value (generally returned by a call to ftok())
+	-> segsize : the size of the shared memory segment in bytes
  
  RETURNS:
- 			-> shmid : identifier of the created/opened shared memory segment
+	-> shmid : identifier of the created/opened shared memory segment
  ---------------------------------------------------------------------------- */
 int open_shm(key_t keyval, int segsize){
 
@@ -222,10 +216,10 @@ int open_shm(key_t keyval, int segsize){
  Writes a value in the shared memory segment.
  
  ARGUMENTS:
- 			-> segptr : a pointer to the shared memory segment
- 			-> index : index in the shared memory segment of the shared memory
- 					   cell to write
- 			-> value : the value to write in shared memory
+	-> segptr : a pointer to the shared memory segment
+	-> index : index in the shared memory segment of the shared memory cell
+			   to write
+	-> value : the value to write in shared memory
  ---------------------------------------------------------------------------- */
 void wr_shm(int* segptr, int index, int value){
 	
@@ -237,8 +231,8 @@ void wr_shm(int* segptr, int index, int value){
  Reads a value from shared memory segment.
  
  ARGUMENTS:
- 			-> segptr : a pointer to the shared memory segment
- 			-> index : index of the shared memory cell to read
+	-> segptr : a pointer to the shared memory segment
+	-> index : index of the shared memory cell to read
  ---------------------------------------------------------------------------- */
 int rd_shm(int* segptr, int index){
 	
@@ -250,7 +244,7 @@ int rd_shm(int* segptr, int index){
  Marks the shared memory segment of identifier "shmid" for removal.
  
  ARGUMENTS:
- 			-> shmid : identifier of the shared memory segment
+	-> shmid : identifier of the shared memory segment
  ---------------------------------------------------------------------------- */
 void rm_shm(int shmid){
 	
