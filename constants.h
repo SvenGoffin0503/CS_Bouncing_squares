@@ -6,5 +6,3 @@
 #define SIZE_Y 256
 #define PIXEL_WIDTH 2
 #define SQUARE_WIDTH 16
-#define SQUARE_COUNT 4
-#define SQUARE_MAX 10
