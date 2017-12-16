@@ -367,6 +367,7 @@ void worker(int* segptr, int semid, int qid, square square_data, int id,
  ---------------------------------------------------------------------------- */
 void exit_proc(int* segptr, int semid, int qid, int shmid, int nb_workers){
 	
+	printf("\n\n\nPress a key to stop the program: ");
 	// Waits a key of the keyboard to be pressed
 	while(kbhit() == 0)
 		lock_sem(semid, 6);
@@ -382,7 +383,7 @@ void exit_proc(int* segptr, int semid, int qid, int shmid, int nb_workers){
 	rm_shm(shmid);
 	rm_sem(semid);
 	
-	printf("\n User pressed a key and stopped properly the program\n");
+	printf("\nUser pressed a key and stopped properly the program\n");
 }
 
 
