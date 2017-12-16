@@ -1,25 +1,28 @@
-//
-//  main.c
-//  Bouncing_squares
-//
-//  Created by Sven Goffin on 9/12/17.
-//  Copyright © 2017 Sven Goffin. All rights reserved.
-//
+/* ==========================================================================
+ main.c : main function file
+ ============================================================================ */
 
 #include <stdio.h>
-//#include <stdlib.h>
-#include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
-#include <sys/types.h>
 
-#include "parallel.h"
+#include "processes.h"
 #include "synchronization.h"
 #include "output.h"
 #include "constants.h"
 
 
-static void initSquares(int nb_squares, int nb_custom, square* table_square,
+/* --------------------------------------------------------------------------
+ This function initializes all the squares of the grid.
+ 
+ ARGUMENTS:
+ 	-> nb_squares : the number of squares in the grid
+ 	-> nb_custom : the number of squares the user want to customize
+ 	-> table_square : data structure used to store squares information
+ 	-> table_pos : data structure used to store squares positions
+ 	-> segptr : a pointer to the shared memory
+ ---------------------------------------------------------------------------- */
+static void init_squares(int nb_squares, int nb_custom, square* table_square,
 						   position* table_pos, int* segptr){
 	
 	const int X_MAX = SIZE_X - SQUARE_WIDTH;
@@ -31,13 +34,13 @@ static void initSquares(int nb_squares, int nb_custom, square* table_square,
 	
 	for(int i = 0; i < nb_custom; i++){
 		
-		printf("\t Custom square %d:\n", i + 1);
+		printf("\n\t Custom square %d:\n", i + 1);
 		
 		// Coordinates initialization
 		int valid_coord = 0;
 		while(valid_coord == 0){
-			printf("\n\t\t Enter x coordinate of square %d (between 0 and %d) :",
-				   i + 1, X_MAX);
+			printf("\n\t\t Enter x coordinate of square %d (between 0 and %d)"
+				   " :",i + 1, X_MAX);
 			scanf("%d", &(table_pos[i].x));
 		
 			printf("\t\t Enter y coordinate of square %d (between 0 and %d) :",
@@ -131,6 +134,10 @@ static void initSquares(int nb_squares, int nb_custom, square* table_square,
 	}
 }
 
+
+/* --------------------------------------------------------------------------
+ Main function.
+ ---------------------------------------------------------------------------- */
 int main(int argc, char* argv[]){
 	
 	int nb_squares;
@@ -181,15 +188,12 @@ int main(int argc, char* argv[]){
 	position pos_table[nb_squares];
 	square square_table[nb_squares];
 	
+	// Creation of the semaphore set, the message queue and the shared memory
 	union semunion semopts;
 	pid_t pid;
 	key_t key_shm = ftok(".", 'M');
 	key_t key_sem = ftok(".", 'S');
 	key_t key_msg = ftok(".", 'Q');
-
-rm_queue(1769472);
-rm_shm(1507329);
-rm_sem(2162688);
 	
 	int semnum = 7 + nb_squares;
 	int shmid = open_shm(key_shm, ((2 * nb_squares) + 3) * sizeof(int));
@@ -234,40 +238,40 @@ rm_sem(2162688);
 			exit(1);
 	}
 	
-	initSquares(nb_squares, nb_cust_squares, square_table, pos_table, segptr);
+	init_squares(nb_squares, nb_cust_squares, square_table, pos_table, segptr);
 	
 	// Semaphores' initialization
 	semopts.val = 0;
-	semctl(semid, 0, SETVAL, semopts); // Go_compute_position
+	semctl(semid, 0, SETVAL, semopts);
 	semopts.val = 0;
 	semctl(semid, 1, SETVAL, semopts);
 	semopts.val = 1;
-	semctl(semid, 2, SETVAL, semopts); // Mutex 1
+	semctl(semid, 2, SETVAL, semopts);
 	semopts.val = 1;
-	semctl(semid, 3, SETVAL, semopts); // Mutex 2
+	semctl(semid, 3, SETVAL, semopts);
 	semopts.val = nb_squares;
-	semctl(semid, 4, SETVAL, semopts); // Can_display
+	semctl(semid, 4, SETVAL, semopts);
 	semopts.val = 0;
-	semctl(semid, 5, SETVAL, semopts); // Go_exit
+	semctl(semid, 5, SETVAL, semopts);
 	semopts.val = 0;
-	semctl(semid, 6, SETVAL, semopts); // KBHIT
+	semctl(semid, 6, SETVAL, semopts);
 	
 	for(int i = 0; i < nb_squares; i++){
 		semopts.val = 0;
-		semctl(semid, 7 + i, SETVAL, semopts); // Go_intersection
+		semctl(semid, 7 + i, SETVAL, semopts);
 	}
 	
 	
 	// Initialization of shared variables
-	wr_shm(segptr, 0, 0); // Stop
-	wr_shm(segptr, 1, 0); // nb_finish_compute
-	wr_shm(segptr, 2, 0); // nb_finish_intersect
+	wr_shm(segptr, 0, 0);
+	wr_shm(segptr, 1, 0);
+	wr_shm(segptr, 2, 0);
 	
 	// Clear input buffer
 	int c;
-	while ((c = getchar()) != '\n' && c != EOF) { }
+	while ((c = getchar()) != '\n' && c != EOF){}
 	
-	// Creation of the different processes
+	// Creation of the processes
 	id = 0;
 	
 	for(cnt = 0; cnt <= nb_squares; cnt++){
@@ -285,9 +289,9 @@ rm_sem(2162688);
 				exit_proc(segptr, semid, qid, shmid, nb_squares);
 			}
 			else{
-				// Square area
+				// Worker area
 				cnt = nb_squares;
-				squares(segptr, semid, qid, square_table[id], id, nb_squares);
+				worker(segptr, semid, qid, square_table[id], id, nb_squares);
 			}
 		}
 		else{
