@@ -144,7 +144,8 @@ int main(int argc, char* argv[]){
 	int nb_cust_squares;
 	char custom_type;
 	char type_nb_squares;
-	const int squares_max = 10;
+	const int SQUARES_MAX = (int) (SIZE_X * SIZE_Y) /
+	(4 * SQUARE_WIDTH * SQUARE_WIDTH);
 	
 	// Initializes the number of squares
 	printf("Do you want to choose the number of squares (write c) or do you"
@@ -153,16 +154,16 @@ int main(int argc, char* argv[]){
 	
 	switch(type_nb_squares){
 		case 'r':
-			nb_squares = (rand() % 10) + 1;
+			nb_squares = (rand() % SQUARES_MAX) + 1;
 			break;
 		case 'c':
-			printf("How many squares do you want? (Max %d) \n",  squares_max);
+			printf("How many squares do you want? (Max %d) \n",  SQUARES_MAX);
 			scanf("%d", &nb_squares);
 			
-			if(nb_squares > squares_max){
+			if(nb_squares > SQUARES_MAX){
 				
 				fprintf(stderr, "Too many squares! This must be smaller (or"
-						"equal) than %d. \n", squares_max);
+						" equal) than %d. \n", SQUARES_MAX);
 				exit(1);
 			}
 			
@@ -173,10 +174,10 @@ int main(int argc, char* argv[]){
 			exit(1);
 	}
 	
-	if(nb_squares > squares_max){
+	if(nb_squares > SQUARES_MAX){
 		
 		fprintf(stderr, "Too many squares! This must be smaller (or equal) "
-				"than %d.\n", squares_max);
+				"than %d.\n", SQUARES_MAX);
 		exit(1);
 	}
 	
